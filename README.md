@@ -1,2 +1,2 @@
 # SRT_Barelymetal
-Progetto Sistemi Real Time 
+Progetto Sistemi Real Time :)
