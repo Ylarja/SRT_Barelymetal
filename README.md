@@ -1,4 +1,4 @@
-# SRT_Barelymetal – CAN Bus Analyzer on Zynq® UltraScale+™ MPSoC ZCU104
+# SRT_Barelymetal – CAN Bus Analyzer 
 
 This repository contains the step-by-step guide to reproduce our CAN bus analyzer: a **HALO** network (Arduino Portenta H7 controller + Adafruit responders) monitored by a **Listener** node running on PetaLinux on a Xilinx Zynq® UltraScale+™ MPSoC ZCU104, using only the Processing System (PS).
 
