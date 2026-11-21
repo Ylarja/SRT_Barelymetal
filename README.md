@@ -140,14 +140,21 @@ echo $PETALINUX    # should print /home/<your_user>/petalinux/2023.2
 
 ## 3. PetaLinux Project
 
-### 3.1 Create the Project
+### 3.1 Create the Project from the ZCU104 BSP
 
-We do **not** use the ZCU104 BSP. We start from the generic `zynqMP` template, so the device tree is generated only from the hardware we designed in Vivado:
+Creating the project from the generic `zynqMP` template with a PS-only `.xsa` did not produce a working build, so we start from the official **ZCU104 Board Support Package (BSP)**. The BSP provides a tested base configuration for the board (U-Boot, device tree, PMU firmware). In [3.2](#32-import-the-hardware) we import our own `.xsa` on top of it.
+
+1. Download the ZCU104 BSP from the [AMD Embedded Software downloads page](https://www.amd.com/en/support/downloads/adaptive-socs-and-fpgas/embedded-software.html#tabs-13aaba6de8-item-3e5066a8e9-tab). Open the **PetaLinux** tab and choose your PetaLinux version.
+
+   > ⚠️ **Warning:** the BSP version **must match** the PetaLinux version you installed. With PetaLinux 2023.2, use `xilinx-zcu104-v2023.2-*.bsp`. A BSP from another release (e.g. 2022.2) fails at project creation.
+
+2. Move the BSP to your home directory and create the project:
 
 ```bash
 cd ~
-petalinux-create -t project --template zynqMP -n can_analyzer_os
-cd can_analyzer_os
+source ~/petalinux/2023.2/settings.sh
+petalinux-create -t project -s xilinx-zcu104-v2023.2-10140544.bsp -n my_project
+cd my_project
 ```
 
 ### 3.2 Import the Hardware
@@ -155,7 +162,7 @@ cd can_analyzer_os
 Point PetaLinux to the folder that contains the `.xsa`:
 
 ```bash
-petalinux-config --get-hw-description=<PATH_TO_XSA_FOLDER>
+petalinux-config --get-hw-description ~/project_can_co/design_1_wrapper.xsa
 ```
 
 The configuration menu opens. Press **Exit** and **Save** for now.
@@ -214,34 +221,20 @@ grep -E "CONFIG_can-utils|CONFIG_iproute2" project-spec/configs/rootfs_config
 # CONFIG_iproute2=y
 ```
 
-### 3.7 Device Tree Override
+## 3.7 Device Tree Override
 
-The generated device tree leaves the CAN controller disabled. Build the device tree, then find the CAN node:
+The generated device tree may leave the CAN controller disabled. Build the device tree and check the status of the CAN1 node (`can@ff070000`):
 
 ```bash
 petalinux-build -c device-tree
-grep -rn "can@" components/plnx_workspace/device-tree/device-tree/
-# look for can@ff070000 (CAN1)
+grep -rn -A5 "can@ff070000" components/plnx_workspace/device-tree/device-tree/
 ```
 
-Force it on in `system-user.dtsi`:
+To force it on, open `system-user.dtsi`:
 
 ```bash
 nano project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi
 ```
-
-```dts
-/include/ "system-conf.dtsi"
-/ {
-};
-
-&can1 {
-    status = "okay";
-};
-```
-
-The full file is in `petalinux/system-user.dtsi` in this repository.
-
 ---
 
 ## 4. Build and Deploy on the micro-SD
@@ -254,14 +247,16 @@ petalinux-build
 
 This takes a long time on the first run.
 
-### 4.2 Generate `BOOT.BIN` (without bitstream)
-
-Our design uses only the PS, so we leave the PL bitstream out of `BOOT.BIN` (no `--fpga`). The board boots faster this way:
+### 4.2 Generate `BOOT.BIN`
 
 ```bash
-petalinux-package --boot --u-boot --force
+petalinux-package --boot --u-boot --fpga --force
 ls -l images/linux/    # BOOT.BIN, image.ub, boot.scr, rootfs.tar.gz
 ```
+
+> ℹ️ **Info:** `--fpga` adds the bitstream exported from Vivado to `BOOT.BIN`. Our design uses only the PS, so the PL is programmed with an empty design: no logic runs on the FPGA.
+
+> 📷 **[SCREENSHOT: system build output]**
 
 > 📷 **[SCREENSHOT: system build output]**
 
@@ -289,7 +284,7 @@ Create the following layout:
 Remove and reinsert the SD so that Ubuntu mounts it under `/media/$USER/`, then copy the files:
 
 ```bash
-cd ~/can_analyzer_os
+cd ~/my_project
 cp images/linux/BOOT.BIN /media/$USER/BOOT/
 cp images/linux/image.ub /media/$USER/BOOT/
 cp images/linux/boot.scr /media/$USER/BOOT/
