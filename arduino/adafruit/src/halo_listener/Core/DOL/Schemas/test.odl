@@ -1,0 +1,8 @@
+test_msg :
+    text : uint8,21
+
+test_msg2 :
+    id : uint16
+    sensor_blue:
+        r1 : float64
+        r2 : float64

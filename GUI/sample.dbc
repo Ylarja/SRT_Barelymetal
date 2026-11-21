@@ -1,0 +1,77 @@
+VERSION ""
+
+
+NS_ :
+    CM_
+    BA_DEF_
+    BA_
+    BA_DEF_DEF_
+
+BS_:
+
+BU_: ECM TCM ABS EPS BCM IPC GW ADAS
+
+
+BO_ 192 ENG_RPM: 8 ECM
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ EngineSpeed : 8|16@1+ (0.25,0) [0|16383.75] "rpm" TCM,IPC,GW
+
+BO_ 200 ENG_TORQUE: 8 ECM
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ ActualTorque : 8|16@1- (0.1,0) [-3276.8|3276.7] "Nm" TCM,GW
+
+BO_ 416 TRANS_GEAR: 8 TCM
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ CurrentGear : 8|4@1+ (1,0) [0|15] "" IPC,ECM
+
+BO_ 501 WHEEL_SPEED: 8 ABS
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ WheelSpeedFL : 8|16@1+ (0.01,0) [0|655.35] "km/h" ECM,EPS,IPC
+
+BO_ 544 YAW_RATE: 8 ABS
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ YawRate : 8|16@1- (0.01,0) [-327.68|327.67] "deg/s" EPS
+
+BO_ 688 STEER_ANGLE: 8 EPS
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ SteeringAngle : 8|16@1- (0.1,0) [-3276.8|3276.7] "deg" ABS
+
+BO_ 960 BODY_STATUS: 8 BCM
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ IgnitionState : 8|3@1+ (1,0) [0|7] "" ECM,IPC
+
+BO_ 1056 DOOR_STATE: 8 BCM
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ DoorsOpen : 8|4@1+ (1,0) [0|15] "" IPC
+
+BO_ 1296 CLUSTER_DISP: 8 IPC
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ DisplayMode : 8|4@1+ (1,0) [0|15] "" BCM
+
+BO_ 1520 GW_HEARTBEAT: 8 GW
+ SG_ RollingCounter : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ GatewayState : 8|4@1+ (1,0) [0|15] "" ECM,BCM
+
+
+CM_ BU_ ECM "Engine Control";
+CM_ BU_ TCM "Transmission";
+CM_ BU_ ABS "ABS / ESC";
+CM_ BU_ EPS "Power Steering";
+CM_ BU_ BCM "Body Control";
+CM_ BU_ IPC "Instrument Cluster";
+CM_ BU_ GW "Central Gateway";
+CM_ BU_ ADAS "Driver Assist (not fitted)";
+
+BA_DEF_ BO_ "GenMsgCycleTime" INT 0 65535;
+BA_DEF_DEF_ "GenMsgCycleTime" 0;
+
+BA_ "GenMsgCycleTime" BO_ 192 10;
+BA_ "GenMsgCycleTime" BO_ 200 20;
+BA_ "GenMsgCycleTime" BO_ 416 50;
+BA_ "GenMsgCycleTime" BO_ 501 10;
+BA_ "GenMsgCycleTime" BO_ 544 20;
+BA_ "GenMsgCycleTime" BO_ 688 10;
+BA_ "GenMsgCycleTime" BO_ 960 100;
+BA_ "GenMsgCycleTime" BO_ 1056 200;
+BA_ "GenMsgCycleTime" BO_ 1296 100;
+BA_ "GenMsgCycleTime" BO_ 1520 1000;

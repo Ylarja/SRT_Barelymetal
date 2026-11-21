@@ -1,0 +1,19 @@
+###############################
+# This is a sample data object
+###############################
+sample_object :
+    id : uint32    
+    status : float32
+    baro_sensor : 
+        temperature : float32
+        pressure : float32
+        humidity : float32
+    lidar_sensor : 
+        obj_dist : float32, 8
+        altitude : float32
+        light_levels : uint32, 3
+    imu_sensor : 3
+        attitude : float64, 3
+        heading : float32
+    message : uint8, 50
+    timestamp : uint64

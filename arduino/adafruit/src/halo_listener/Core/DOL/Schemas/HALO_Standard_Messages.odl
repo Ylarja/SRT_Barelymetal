@@ -1,0 +1,2 @@
+halo_request_message :
+    timestamp : uint64
