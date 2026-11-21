@@ -54,7 +54,6 @@ This repository contains the step-by-step guide to reproduce our CAN bus analyze
 SRT_Barelymetal/
 ├── images/            # screenshots used in this README
 ├── vivado/            # exported hardware (.xsa)
-├── petalinux/         # system-user.dtsi and PetaLinux customizations
 ├── halo_listener/     # HALO protocol + ZCU104 Listener node
 ├── arduino/
 │   ├── portenta/      # portenta.ino (controller)
