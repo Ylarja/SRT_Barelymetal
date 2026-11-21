@@ -20,7 +20,7 @@ This repository contains the step-by-step guide to reproduce our CAN bus analyze
 
 ---
 
-## 0. Before We Begin
+## 0. Set-up
 
 ### 0.1 Hardware
 
