@@ -51,7 +51,7 @@ This repository contains the step-by-step guide to reproduce our CAN bus analyze
 ### 0.3 Repository Structure
 
 ```
-SRT_Barelymetal/
+CAN_analyser/
 ├── images/            # screenshots used in this README
 ├── vivado/            # exported hardware (.xsa)
 ├── halo_listener/     # HALO protocol + ZCU104 Listener node
