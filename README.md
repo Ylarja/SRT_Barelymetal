@@ -306,6 +306,246 @@ sudo umount /media/$USER/BOOT /media/$USER/rootfs
 
 > ⚠️ **Warning:** do not skip `sync`. Removing the card before pending writes are flushed corrupts the filesystem and leads to a kernel panic at first boot.
 
+
+
+## 5. Physical Setup and Wiring
+
+The test bench has four nodes on the same CAN bus (1 Mbit/s):
+
+| Node | Board | Role |
+|---|---|---|
+| Controller | Arduino Portenta H7 | sends requests (lane 0) and messages (lane 1) |
+| Responder 1 | Adafruit Feather RP2040 CAN | answers on channel 1 |
+| Responder 2 | Adafruit Feather RP2040 CAN | answers on channel 2 |
+| Listener | ZCU104 (PetaLinux) | passive, logs all traffic |
+
+> 📷 **[DIAGRAM: overall wiring schematic of all boards]**
+
+### 5.1 CAN Bus
+
+On the ZCU104, the CAN bus is connected to header **J98**:
+
+| J98 pin | Signal |
+|---|---|
+| 1 | GND |
+| 7 | CAN_L |
+| 8 | CAN_H |
+
+Connect these three signals to the GND, CAN_L and CAN_H pins of the Portenta and of both Adafruit boards. All nodes are connected **in parallel** on the same bus.
+
+> ⚠️ **Termination:** a CAN bus needs **one 120 Ω resistor at each end** (two in total). With all boards **powered off**, measure between CAN_H and CAN_L: you should read **≈ 60 Ω**.
+
+> 📷 **[PHOTO: J98 header on the ZCU104 with the CAN wires]**
+
+### 5.2 Serial Monitoring and Power
+
+| Board | Cable to the MacBook | Port on macOS | Baud |
+|---|---|---|---|
+| ZCU104 (UART console) | micro-USB → USB-C | `/dev/cu.usbserial-*` | 115200 |
+| Portenta H7 | USB-C → USB-C | `/dev/cu.usbmodem*` | 9600 |
+| Adafruit Feather RP2040 CAN (×2) | USB-C → USB-C | `/dev/cu.usbmodem*` | 9600 |
+
+The Arduino boards are powered by their USB cable. The ZCU104 uses its own power supply.
+
+> 📷 **[PHOTO: complete test bench with USB cables]**
+
+---
+
+## 6. HALO Deployment, Execution and Monitoring
+
+### 6.1 Protocol Architecture
+
+- The **Controller** (Portenta) sends **requests** on lane 0 to the Responders and **messages** on lane 1.
+- Each **Responder** (Adafruit) processes the request and **answers** the Controller on lane 0.
+- The **Listener** (ZCU104) never transmits. It receives all traffic on the bus and logs requests, responses, messages, latencies, timeouts and unknown nodes.
+
+> 📷 **[DIAGRAM: HALO message exchange – Controller ⇄ Responders, Listener listening]**
+
+#### Changing the Network or the Messages
+
+The current network (nodes and channels) and messages are already configured in this repository. To change them, use the two tools included in `halo_listener`:
+
+| What to change | Tool | Path |
+|---|---|---|
+| Network topology: nodes, channels, timing | **Network Configurator** | `halo_listener/HALO/Tools/Network Configurator/Network Configurator.py` |
+| Custom messages (data structures exchanged on the bus) | **ODL Editor** | `halo_listener/Core/Tools/ODL Editor/ODL Editor.pyw` |
+
+Both tools generate the C configuration files used by HALO. After any change, rebuild the Listener ([6.3](#63-cross-compile-the-listener-ubuntu-host)) and re-flash all the Arduino nodes ([6.2](#62-flash-the-arduino-nodes-arduino-ide-macbook)), so that every node uses the same configuration.
+
+### 6.2 Flash the Arduino Nodes (Arduino IDE, MacBook)
+
+1. In **Boards Manager**, install using ArduinoIDE:
+   - **Arduino Mbed OS Portenta Boards** (Portenta H7)
+   - **Raspberry Pi Pico/RP2040** by Earle F. Philhower (Feather RP2040 CAN)
+2. In **Library Manager**, install **Adafruit MCP2515**.
+3. In `adafruit.ino` and `portenta.ino`, change the `#include` of `HALO.h` so that it points to `halo_listener/HALO/Protocol/Include/HALO.h` in your copy of the repo.
+4. Upload `portenta.ino` to the Portenta.
+5. Upload `adafruit.ino` to each Adafruit. Before each upload, change only these three lines according to the Network configuration:
+
+```cpp
+// responder 1
+#define RESPONDER_NODE     HALO_NODE_RESPONDER1
+#define RESPONDER_CHANNEL  HALO_CHANNEL_CHANNEL1
+#define PAYLOAD_CHAR       '#'
+// responder 2
+#define RESPONDER_NODE     HALO_NODE_RESPONDER2
+#define RESPONDER_CHANNEL  HALO_CHANNEL_CHANNEL2
+#define PAYLOAD_CHAR       '*'
+```
+
+Open the **Serial Monitor** (9600 baud) to see the counters each node prints.
+
+### 6.3 Cross-compile the Listener (Ubuntu host)
+
+The Listener runs on the ARM cores of the ZCU104, so it is **cross-compiled** on the Ubuntu host. Install the AArch64 toolchain used by the `Makefile`:
+
+```bash
+sudo apt update
+sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+aarch64-linux-gnu-g++ --version
+```
+
+Build:
+
+```bash
+cd halo_listener
+make            # use "make rebuild" for a clean build
+ls build/       # .o object files + the Listener_ZCU104 executable
+```
+
+> ℹ️ **Info:** only the executable runs on the board. The `.o` files are intermediate object files and **cannot** be executed. Running one gives `Permission denied` or `Exec format error`.
+
+### 6.4 Copy the Listener to the SD
+
+Insert the micro-SD in the host, then copy the `build` folder to `/home/petalinux` on the `rootfs` partition. `sudo` is needed because the partition belongs to root:
+
+```bash
+sudo cp -r build /media/$USER/rootfs/home/petalinux/
+sync
+sudo umount /media/$USER/BOOT /media/$USER/rootfs
+```
+
+> ℹ️ **Info:** the copy can also be done by dragging the folder in the file manager.
+
+Insert the micro-SD in the ZCU104.
+
+### 6.5 Boot PetaLinux and Bring Up `can0` (MacBook)
+
+1. Set the ZCU104 boot switches (**SW6**) to **SD boot**, then power on all the boards.
+2. Connect the ZCU104 UART to the MacBook and open the console:
+
+```bash
+ls /dev/cu.usbserial-*                      # the ZCU104 shows four ports
+screen /dev/cu.usbserial-XXXXXXX1 115200    # the console is usually the 2nd one
+```
+
+> 💡 **Tip:** if nothing is printed, close `screen` (`Ctrl-A`, then `K`, then `y`), try the next port and press **Enter**.
+
+3. Log in as user **`petalinux`**. At the first login PetaLinux 2023.2 asks you to **set a new password**.
+
+4. Configure and bring up the SocketCAN interface. The bitrate must be set **while the interface is down**: changing it while `can0` is up returns `RTNETLINK answers: Device or resource busy`.
+
+```bash
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 1000000
+sudo ip link set can0 up
+ip -details link show can0                  # check: state ERROR-ACTIVE, bitrate 1000000
+```
+
+> 📷 **[SCREENSHOT: PetaLinux boot and can0 configuration]**
+
+### 6.6 Run the Listener
+
+```bash
+cd /home/petalinux/build
+chmod +x Listener_ZCU104
+./Listener_ZCU104 10          # argument = analysis window in seconds
+```
+
+With the Controller and the Responders powered and on the bus, the terminal starts printing the HALO traffic:
+- event lines `REQ` / `RSP` / `MSG`;
+- `#FREQ`, `#STAT`, `#TOUT` and `#ALIEN` lines with the statistics, the timeouts and the unknown nodes.
+
+Stop it with `Ctrl-C`: it prints the final summary.
+
+> 📷 **[SCREENSHOT: Listener log on the ZCU104 terminal and counters of the Arduino nodes]**
+
+### 6.7 HALO Monitor GUI and `candump`
+
+The GUI (`can_analyzer/analyzer.py`) runs on the MacBook and shows the Listener data in real time. It has two tabs:
+- **HALO – listener**: data from the Listener;
+- **Bus CAN – candump**: the raw frames captured by `candump`.
+
+Install it once:
+
+```bash
+cd can_analyzer
+python3 -m venv .venv
+source .venv/bin/activate
+pip install PySide6 pyserial
+```
+
+The GUI can receive the data in two ways.
+
+#### Mode A – Live via serial (no network)
+
+The GUI reads directly the ZCU104 serial console, so **`screen` must be closed**: a serial port can be opened by one program at a time. A single console carries one stream at a time, so start **either** the Listener **or** `candump`, not both.
+
+On the ZCU104, in `screen`, start the Listener with a delay. Then close `screen` (`Ctrl-A`, `K`, `y`): the program keeps running on the board.
+
+```bash
+sleep 10; ./Listener_ZCU104 10            # HALO tab
+# or
+sleep 10; candump -L can0                 # Bus CAN tab
+```
+
+Within the 10 seconds, start the GUI on the MacBook:
+
+```bash
+python analyzer.py --halo-serial /dev/cu.usbserial-XXXXXXX1 --halo-save halo.log
+# or
+python analyzer.py --candump-serial /dev/cu.usbserial-XXXXXXX1 --candump-save raw.log
+```
+
+> ⚠️ **Warning:** at 115200 baud the serial console carries about 11 KB/s, which is roughly 250 `candump` lines per second. At high bus load, use Mode B.
+
+#### Mode B – Live via Ethernet (recommended, both tabs)
+
+Connect the ZCU104 Ethernet port to the same network as the MacBook. Start the GUI first, because the MacBook waits for the connections:
+
+```bash
+python analyzer.py --halo-tcp 5000 --candump-tcp 5001
+```
+
+On the ZCU104, open two SSH sessions with `ssh petalinux@<ZCU_IP>`. In the first one, run the Listener and stream its output:
+
+```bash
+./Listener_ZCU104 10 > /tmp/halo.log &
+tail -n +1 -F /tmp/halo.log | nc <MAC_IP> 5000
+```
+
+In the second one, run `candump` and stream its output:
+
+```bash
+candump -L can0 > /tmp/raw.log &
+tail -n +1 -F /tmp/raw.log | nc <MAC_IP> 5001
+```
+
+The ZCU104 IP is shown by `ip addr show eth0`. The MacBook IP is shown by `ipconfig getifaddr en0`. The first time, allow incoming connections for Python in the macOS firewall prompt.
+
+> ℹ️ **Info:** the outputs are written to a file first, so the Listener keeps running even if the network or the GUI goes down. `nc` can be restarted at any time.
+
+#### Replay (no board)
+
+To show the GUI on recorded logs:
+
+```bash
+python analyzer.py --halo-replay halo.log
+python analyzer.py --halo-replay halo.log --candump-sim halo.log     # both tabs, simulated frames
+```
+
+> 📷 **[SCREENSHOT: HALO Monitor GUI during acquisition]**
+
 ---
 
 ## References
