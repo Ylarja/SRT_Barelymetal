@@ -1,4 +1,4 @@
-# SRT_Barelymetal – CAN Bus Analyzer 
+# CAN Bus Analyzer 
 
 This repository contains the step-by-step guide to reproduce our CAN bus analyzer: a **HALO** network (Arduino Portenta H7 controller + Adafruit responders) monitored by a **Listener** node running on PetaLinux on a Xilinx Zynq® UltraScale+™ MPSoC ZCU104, using only the Processing System (PS).
 
@@ -6,7 +6,7 @@ This repository contains the step-by-step guide to reproduce our CAN bus analyze
 
 ## Table of Contents
 
-0. [Before We Begin](#0-before-we-begin)
+0. [Set-up](#0-Set-up)
    - [Hardware](#01-hardware)
    - [Software](#02-software)
    - [Repository Structure](#03-repository-structure)
