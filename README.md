@@ -6,7 +6,7 @@ This repository contains the step-by-step guide to reproduce our CAN bus analyze
 
 ## Table of Contents
 
-0. [Set-up](#0-Set-up)
+0. [Set-up](#0-set-up)
    - [Hardware](#01-hardware)
    - [Software](#02-software)
    - [Repository Structure](#03-repository-structure)
@@ -14,8 +14,8 @@ This repository contains the step-by-step guide to reproduce our CAN bus analyze
 2. [Host Environment Setup (Ubuntu)](#2-host-environment-setup-ubuntu)
 3. [PetaLinux Project](#3-petalinux-project)
 4. [Build and Deploy on the micro-SD](#4-build-and-deploy-on-the-micro-sd)
-5. First Boot and CAN Test *(coming soon)*
-6. HALO Network and Analyzer *(coming soon)*
+5. [Physical Setup and Wiring](#5-physical-setup-and-wiring)
+6. [HALO Deployment, Execution and Monitoring](#6-halo-deployment-execution-and-monitoring)
 7. [References](#references)
 
 ---
@@ -342,8 +342,8 @@ Connect these three signals to the GND, CAN_L and CAN_H pins of the Portenta and
 | Board | Cable to the MacBook | Port on macOS | Baud |
 |---|---|---|---|
 | ZCU104 (UART console) | micro-USB → USB-C | `/dev/cu.usbserial-*` | 115200 |
-| Portenta H7 | USB-C → USB-C | `/dev/cu.usbmodem*` | 9600 |
-| Adafruit Feather RP2040 CAN (×2) | USB-C → USB-C | `/dev/cu.usbmodem*` | 9600 |
+| Portenta H7 | USB-C → USB-C | `ArduinoIDE` | 9600 |
+| Adafruit Feather RP2040 CAN (×2) | USB-C → USB-C | `ArduinoIDE` | 9600 |
 
 The Arduino boards are powered by their USB cable. The ZCU104 uses its own power supply.
 
@@ -449,7 +449,6 @@ screen /dev/cu.usbserial-XXXXXXX1 115200    # the console is usually the 2nd one
 sudo ip link set can0 down
 sudo ip link set can0 type can bitrate 1000000
 sudo ip link set can0 up
-ip -details link show can0                  # check: state ERROR-ACTIVE, bitrate 1000000
 ```
 
 > 📷 **[SCREENSHOT: PetaLinux boot and can0 configuration]**
