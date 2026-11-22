@@ -213,13 +213,7 @@ Enable as **built-in** `[*]` (press `/` to search for a symbol):
 petalinux-config -c rootfs
 ```
 
-Enable **`iproute2`** (to bring up `can0`) and **`can-utils`** (`candump`, `cansend`), which we use to test the wiring and the controller before running our own software. Check that both are enabled:
-
-```bash
-grep -E "CONFIG_can-utils|CONFIG_iproute2" project-spec/configs/rootfs_config
-# CONFIG_can-utils=y
-# CONFIG_iproute2=y
-```
+Enable **`iproute2`** (to bring up `can0`) and **`can-utils`** (`candump`, `cansend`), which we use to test the wiring and the controller before running our own software.
 
 ## 3.7 Device Tree Override
 
@@ -250,11 +244,9 @@ This takes a long time on the first run.
 ### 4.2 Generate `BOOT.BIN`
 
 ```bash
-petalinux-package --boot --u-boot --fpga --force
+petalinux-package --boot --u-boot --force
 ls -l images/linux/    # BOOT.BIN, image.ub, boot.scr, rootfs.tar.gz
 ```
-
-> ℹ️ **Info:** `--fpga` adds the bitstream exported from Vivado to `BOOT.BIN`. Our design uses only the PS, so the PL is programmed with an empty design: no logic runs on the FPGA.
 
 > 📷 **[SCREENSHOT: system build output]**
 
@@ -327,15 +319,13 @@ On the ZCU104, the CAN bus is connected to header **J98**:
 
 Connect these three signals to the GND, CAN_L and CAN_H pins of the Portenta and of both Adafruit boards. All nodes are connected **in parallel** on the same bus.
 
-> ⚠️ **Termination:** a CAN bus needs **one 120 Ω resistor at each end** (two in total). With all boards **powered off**, measure between CAN_H and CAN_L: you should read **≈ 60 Ω**.
-
 > 📷 **[PHOTO: J98 header on the ZCU104 with the CAN wires]**
 
 ### 5.2 Serial Monitoring and Power
 
 | Board | Cable to the MacBook | Port on macOS | Baud |
 |---|---|---|---|
-| ZCU104 (UART console) | micro-USB → USB-C | `/dev/cu.usbserial-*` | 115200 |
+| ZCU104 (UART console) | micro-USB → USB-C | `/dev/tty.usbserial-*` | 115200 |
 | Portenta H7 | USB-C → USB-C | `ArduinoIDE` | 9600 |
 | Adafruit Feather RP2040 CAN (×2) | USB-C → USB-C | `ArduinoIDE` | 9600 |
 
@@ -364,7 +354,7 @@ The current network (nodes and channels) and messages are already configured in 
 | Network topology: nodes, channels, timing | **Network Configurator** | `halo_listener/HALO/Tools/Network Configurator/Network Configurator.py` |
 | Custom messages (data structures exchanged on the bus) | **ODL Editor** | `halo_listener/Core/Tools/ODL Editor/ODL Editor.pyw` |
 
-Both tools generate the C configuration files used by HALO. After any change, rebuild the Listener ([6.3](#63-cross-compile-the-listener-ubuntu-host)) and re-flash all the Arduino nodes ([6.2](#62-flash-the-arduino-nodes-arduino-ide-macbook)), so that every node uses the same configuration.
+Both these tools generate the configuration files used by HALO. After any change, rebuild the Listener ([6.3](#63-cross-compile-the-listener-ubuntu-host)) and re-flash all the Arduino nodes ([6.2](#62-flash-the-arduino-nodes-arduino-ide-macbook)), so that every node uses the same configuration.
 
 ### 6.2 Flash the Arduino Nodes (Arduino IDE, MacBook)
 
@@ -372,7 +362,7 @@ Both tools generate the C configuration files used by HALO. After any change, re
    - **Arduino Mbed OS Portenta Boards** (Portenta H7)
    - **Raspberry Pi Pico/RP2040** by Earle F. Philhower (Feather RP2040 CAN)
 2. In **Library Manager**, install **Adafruit MCP2515**.
-3. In `adafruit.ino` and `portenta.ino`, change the `#include` of `HALO.h` so that it points to `halo_listener/HALO/Protocol/Include/HALO.h` in your copy of the repo.
+3. In `adafruit.ino` and `portenta.ino`, change the `#include` of `HALO.h` so that it points to `~/halo_listener/HALO/Protocol/Include/HALO.h` in your copy of the repo.
 4. Upload `portenta.ino` to the Portenta.
 5. Upload `adafruit.ino` to each Adafruit. Before each upload, change only these three lines according to the Network configuration:
 
@@ -426,11 +416,11 @@ Insert the micro-SD in the ZCU104.
 ### 6.5 Boot PetaLinux and Bring Up `can0` (MacBook)
 
 1. Set the ZCU104 boot switches (**SW6**) to **SD boot**, then power on all the boards.
-2. Connect the ZCU104 UART to the MacBook and open the console:
+2. Connect the ZCU104 USB type-AB connector to the MacBook and open the console:
 
 ```bash
-ls /dev/cu.usbserial-*                      # the ZCU104 shows four ports
-screen /dev/cu.usbserial-XXXXXXX1 115200    # the console is usually the 2nd one
+ls /dev/tty.usbserial-*                      # the ZCU104 shows four ports
+screen /dev/tty.usbserial-XXXXXXX1 115200    # the console is usually the 2nd one
 ```
 
 > 💡 **Tip:** if nothing is printed, close `screen` (`Ctrl-A`, then `K`, then `y`), try the next port and press **Enter**.
@@ -465,7 +455,7 @@ Stop it with `Ctrl-C`: it prints the final summary.
 
 ### 6.7 HALO Monitor GUI and `candump`
 
-The GUI (`can_analyzer/analyzer.py`) runs on the MacBook and shows the Listener data in real time. It has two tabs:
+The GUI (`can_analyzer/analyzer.py`) runs on the MacBook and shows the Listener data in real time. there are two modes:
 - **HALO – listener**: data from the Listener;
 - **Bus CAN – candump**: the raw frames captured by `candump`.
 
@@ -475,7 +465,7 @@ Install it once:
 cd can_analyzer
 python3 -m venv .venv
 source .venv/bin/activate
-pip install PySide6 pyserial
+pip install requirements.txt
 ```
 
 The GUI can receive the data in two ways.
@@ -501,32 +491,6 @@ python analyzer.py --candump-serial /dev/cu.usbserial-XXXXXXX1 --candump-save ra
 ```
 
 > ⚠️ **Warning:** at 115200 baud the serial console carries about 11 KB/s, which is roughly 250 `candump` lines per second. At high bus load, use Mode B.
-
-#### Mode B – Live via Ethernet (recommended, both tabs)
-
-Connect the ZCU104 Ethernet port to the same network as the MacBook. Start the GUI first, because the MacBook waits for the connections:
-
-```bash
-python analyzer.py --halo-tcp 5000 --candump-tcp 5001
-```
-
-On the ZCU104, open two SSH sessions with `ssh petalinux@<ZCU_IP>`. In the first one, run the Listener and stream its output:
-
-```bash
-./Listener_ZCU104 10 > /tmp/halo.log &
-tail -n +1 -F /tmp/halo.log | nc <MAC_IP> 5000
-```
-
-In the second one, run `candump` and stream its output:
-
-```bash
-candump -L can0 > /tmp/raw.log &
-tail -n +1 -F /tmp/raw.log | nc <MAC_IP> 5001
-```
-
-The ZCU104 IP is shown by `ip addr show eth0`. The MacBook IP is shown by `ipconfig getifaddr en0`. The first time, allow incoming connections for Python in the macOS firewall prompt.
-
-> ℹ️ **Info:** the outputs are written to a file first, so the Listener keeps running even if the network or the GUI goes down. `nc` can be restarted at any time.
 
 #### Replay (no board)
 
